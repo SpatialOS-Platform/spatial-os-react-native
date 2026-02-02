@@ -31,7 +31,7 @@ export function useRealtime() {
 
     useEffect(() => {
         const unsubscribe = client.onEvent((event: RealtimeEvent) => {
-            setState(s => ({
+            setState((s: RealtimeState) => ({
                 ...s,
                 events: [...s.events.slice(-99), event], // Keep last 100 events
                 isConnected: event.type !== 'disconnected' && (s.isConnected || event.type === 'connected'),
@@ -56,7 +56,7 @@ export function useRealtime() {
     }, [client]);
 
     const clearEvents = useCallback(() => {
-        setState(s => ({ ...s, events: [] }));
+        setState((s: RealtimeState) => ({ ...s, events: [] }));
     }, []);
 
     return {

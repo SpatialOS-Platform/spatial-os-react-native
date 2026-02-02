@@ -31,7 +31,7 @@ export function useAuth() {
     });
 
     const login = useCallback(async (email: string, password: string): Promise<AuthResult | null> => {
-        setState(s => ({ ...s, isLoading: true, error: null }));
+        setState((s: AuthState) => ({ ...s, isLoading: true, error: null }));
         try {
             const result = await client.login(email, password);
             const user = await client.me();
@@ -39,7 +39,7 @@ export function useAuth() {
             return result;
         } catch (e) {
             const error = e instanceof Error ? e.message : 'Login failed';
-            setState(s => ({ ...s, isLoading: false, error, isAuthenticated: false }));
+            setState((s: AuthState) => ({ ...s, isLoading: false, error, isAuthenticated: false }));
             return null;
         }
     }, [client]);
@@ -49,14 +49,14 @@ export function useAuth() {
         password: string,
         displayName?: string
     ): Promise<AuthResult | null> => {
-        setState(s => ({ ...s, isLoading: true, error: null }));
+        setState((s: AuthState) => ({ ...s, isLoading: true, error: null }));
         try {
             const result = await client.register(email, password, displayName);
-            setState(s => ({ ...s, isLoading: false }));
+            setState((s: AuthState) => ({ ...s, isLoading: false }));
             return result;
         } catch (e) {
             const error = e instanceof Error ? e.message : 'Registration failed';
-            setState(s => ({ ...s, isLoading: false, error }));
+            setState((s: AuthState) => ({ ...s, isLoading: false, error }));
             return null;
         }
     }, [client]);
@@ -70,10 +70,10 @@ export function useAuth() {
         if (!client.isAuthenticated()) return;
         try {
             const user = await client.me();
-            setState(s => ({ ...s, user }));
-        } catch (e) {
+            setState((s: AuthState) => ({ ...s, user }));
+        } catch {
             // Token may be expired
-            setState(s => ({ ...s, user: null, isAuthenticated: false }));
+            setState((s: AuthState) => ({ ...s, user: null, isAuthenticated: false }));
         }
     }, [client]);
 

@@ -1,8 +1,39 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Anchor } from './types/anchor';
 import type { Space, SpaceHierarchy } from './types/space';
 import type { User, AuthResult } from './types/user';
 import type { RealtimeEvent } from './types/realtime';
+
+// AsyncStorage interface for React Native
+interface AsyncStorageStatic {
+    getItem(key: string): Promise<string | null>;
+    setItem(key: string, value: string): Promise<void>;
+    removeItem(key: string): Promise<void>;
+}
+
+// Dynamic import to avoid bundling issues
+let AsyncStorage: AsyncStorageStatic | null = null;
+try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    AsyncStorage = require('@react-native-async-storage/async-storage').default;
+} catch {
+    // AsyncStorage not available - use in-memory storage
+}
+
+// In-memory fallback storage
+const memoryStorage: Record<string, string> = {};
+const fallbackStorage: AsyncStorageStatic = {
+    async getItem(key: string) {
+        return memoryStorage[key] ?? null;
+    },
+    async setItem(key: string, value: string) {
+        memoryStorage[key] = value;
+    },
+    async removeItem(key: string) {
+        delete memoryStorage[key];
+    },
+};
+
+const storage = AsyncStorage || fallbackStorage;
 
 export interface SpatialOSConfig {
     baseUrl: string;
@@ -31,7 +62,7 @@ export class SpatialOS {
     // ==================== Auth ====================
 
     async login(email: string, password: string): Promise<AuthResult> {
-        const response = await this.post('/auth/login', { email, password });
+        const response = await this.post<AuthResult>('/auth/login', { email, password });
         if (response.token) {
             await this.setToken(response.token);
         }
@@ -39,7 +70,7 @@ export class SpatialOS {
     }
 
     async register(email: string, password: string, displayName?: string): Promise<AuthResult> {
-        return this.post('/auth/register', {
+        return this.post<AuthResult>('/auth/register', {
             email,
             password,
             display_name: displayName
@@ -47,12 +78,12 @@ export class SpatialOS {
     }
 
     async me(): Promise<User> {
-        return this.get('/auth/me');
+        return this.get<User>('/auth/me');
     }
 
     async logout(): Promise<void> {
         this.token = null;
-        await AsyncStorage.removeItem('spatial_os_token');
+        await storage.removeItem('spatial_os_token');
         this.disconnect();
     }
 
@@ -64,12 +95,12 @@ export class SpatialOS {
 
     async listAnchors(spaceId?: string): Promise<Anchor[]> {
         const path = spaceId ? `/spatial/anchors?space_id=${spaceId}` : '/spatial/anchors';
-        const response = await this.get(path);
+        const response = await this.get<{ anchors?: Anchor[] }>(path);
         return response.anchors || [];
     }
 
     async getAnchor(anchorId: string): Promise<Anchor> {
-        return this.get(`/spatial/anchor/${anchorId}`);
+        return this.get<Anchor>(`/spatial/anchor/${anchorId}`);
     }
 
     async createAnchor(data: {
@@ -84,7 +115,7 @@ export class SpatialOS {
         qw?: number;
         payload?: Record<string, unknown>;
     }): Promise<Anchor> {
-        return this.post('/spatial/anchor', {
+        return this.post<Anchor>('/spatial/anchor', {
             space_id: data.spaceId,
             type: data.type,
             px: data.px ?? 0,
@@ -108,29 +139,29 @@ export class SpatialOS {
         qw: number;
         payload: Record<string, unknown>;
     }>): Promise<Anchor> {
-        return this.patch(`/spatial/anchor/${anchorId}`, data);
+        return this.patch<Anchor>(`/spatial/anchor/${anchorId}`, data);
     }
 
     async deleteAnchor(anchorId: string): Promise<void> {
-        await this.delete(`/spatial/anchor/${anchorId}`);
+        await this.doDelete(`/spatial/anchor/${anchorId}`);
     }
 
     async nearbyAnchors(lat: number, lon: number, radius?: number): Promise<Anchor[]> {
         let path = `/spatial/nearby?lat=${lat}&lon=${lon}`;
         if (radius) path += `&radius=${radius}`;
-        const response = await this.get(path);
+        const response = await this.get<{ anchors?: Anchor[] }>(path);
         return response.anchors || [];
     }
 
     // ==================== Spaces ====================
 
     async listSpaces(): Promise<Space[]> {
-        const response = await this.get('/spatial/spaces');
+        const response = await this.get<{ spaces?: Space[] }>('/spatial/spaces');
         return response.spaces || [];
     }
 
     async getSpace(spaceId: string): Promise<Space> {
-        return this.get(`/spatial/space/${spaceId}`);
+        return this.get<Space>(`/spatial/space/${spaceId}`);
     }
 
     async createSpace(data: {
@@ -139,7 +170,7 @@ export class SpatialOS {
         originLon?: number;
         parentSpaceId?: string;
     }): Promise<Space> {
-        return this.post('/spatial/space', {
+        return this.post<Space>('/spatial/space', {
             name: data.name,
             origin_lat: data.originLat,
             origin_lon: data.originLon,
@@ -152,7 +183,7 @@ export class SpatialOS {
         originLat: number;
         originLon: number;
     }>): Promise<Space> {
-        return this.patch(`/spatial/space/${spaceId}`, {
+        return this.patch<Space>(`/spatial/space/${spaceId}`, {
             name: data.name,
             origin_lat: data.originLat,
             origin_lon: data.originLon,
@@ -160,11 +191,11 @@ export class SpatialOS {
     }
 
     async deleteSpace(spaceId: string): Promise<void> {
-        await this.delete(`/spatial/space/${spaceId}`);
+        await this.doDelete(`/spatial/space/${spaceId}`);
     }
 
     async getHierarchy(spaceId: string): Promise<SpaceHierarchy> {
-        return this.get(`/spatial/hierarchy/${spaceId}`);
+        return this.get<SpaceHierarchy>(`/spatial/hierarchy/${spaceId}`);
     }
 
     // ==================== Realtime ====================
@@ -187,7 +218,7 @@ export class SpatialOS {
 
         this.ws.onmessage = (event) => {
             try {
-                const data = JSON.parse(event.data);
+                const data = JSON.parse(event.data as string) as RealtimeEvent;
                 this.emit(data);
             } catch (e) {
                 console.error('Failed to parse WebSocket message:', e);
@@ -243,7 +274,7 @@ export class SpatialOS {
         const response = await fetch(`${this.baseUrl}${path}`, {
             headers: this.headers,
         });
-        return this.handleResponse(response);
+        return this.handleResponse<T>(response);
     }
 
     private async post<T>(path: string, body: Record<string, unknown>): Promise<T> {
@@ -252,7 +283,7 @@ export class SpatialOS {
             headers: this.headers,
             body: JSON.stringify(body),
         });
-        return this.handleResponse(response);
+        return this.handleResponse<T>(response);
     }
 
     private async patch<T>(path: string, body: Record<string, unknown>): Promise<T> {
@@ -261,17 +292,17 @@ export class SpatialOS {
             headers: this.headers,
             body: JSON.stringify(body),
         });
-        return this.handleResponse(response);
+        return this.handleResponse<T>(response);
     }
 
-    private async delete(path: string): Promise<void> {
+    private async doDelete(path: string): Promise<void> {
         const response = await fetch(`${this.baseUrl}${path}`, {
             method: 'DELETE',
             headers: this.headers,
         });
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || 'Request failed');
+            const errorData = await response.json() as { error?: string };
+            throw new Error(errorData.error || 'Request failed');
         }
     }
 
@@ -286,7 +317,7 @@ export class SpatialOS {
     }
 
     private async handleResponse<T>(response: Response): Promise<T> {
-        const data = await response.json();
+        const data = await response.json() as T & { error?: string };
         if (!response.ok) {
             throw new Error(data.error || 'Request failed');
         }
@@ -295,11 +326,11 @@ export class SpatialOS {
 
     private async setToken(token: string): Promise<void> {
         this.token = token;
-        await AsyncStorage.setItem('spatial_os_token', token);
+        await storage.setItem('spatial_os_token', token);
     }
 
     private async restoreToken(): Promise<void> {
-        const token = await AsyncStorage.getItem('spatial_os_token');
+        const token = await storage.getItem('spatial_os_token');
         if (token) {
             this.token = token;
         }

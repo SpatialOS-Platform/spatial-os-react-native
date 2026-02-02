@@ -39,13 +39,13 @@ export function useAnchors(options: UseAnchorsOptions = {}) {
     });
 
     const fetch = useCallback(async () => {
-        setState(s => ({ ...s, isLoading: true, error: null }));
+        setState((s: AnchorsState) => ({ ...s, isLoading: true, error: null }));
         try {
             const anchors = await client.listAnchors(spaceId);
             setState({ anchors, isLoading: false, error: null });
         } catch (e) {
             const error = e instanceof Error ? e.message : 'Failed to fetch anchors';
-            setState(s => ({ ...s, isLoading: false, error }));
+            setState((s: AnchorsState) => ({ ...s, isLoading: false, error }));
         }
     }, [client, spaceId]);
 
@@ -68,7 +68,7 @@ export function useAnchors(options: UseAnchorsOptions = {}) {
         payload?: Record<string, unknown>;
     }) => {
         const anchor = await client.createAnchor(data);
-        setState(s => ({ ...s, anchors: [...s.anchors, anchor] }));
+        setState((s: AnchorsState) => ({ ...s, anchors: [...s.anchors, anchor] }));
         return anchor;
     }, [client]);
 
@@ -82,18 +82,18 @@ export function useAnchors(options: UseAnchorsOptions = {}) {
         }>
     ) => {
         const updated = await client.updateAnchor(anchorId, data);
-        setState(s => ({
+        setState((s: AnchorsState) => ({
             ...s,
-            anchors: s.anchors.map(a => a.anchor_id === anchorId ? updated : a),
+            anchors: s.anchors.map((a: Anchor) => a.anchor_id === anchorId ? updated : a),
         }));
         return updated;
     }, [client]);
 
     const deleteAnchor = useCallback(async (anchorId: string) => {
         await client.deleteAnchor(anchorId);
-        setState(s => ({
+        setState((s: AnchorsState) => ({
             ...s,
-            anchors: s.anchors.filter(a => a.anchor_id !== anchorId),
+            anchors: s.anchors.filter((a: Anchor) => a.anchor_id !== anchorId),
         }));
     }, [client]);
 

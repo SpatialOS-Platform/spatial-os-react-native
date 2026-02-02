@@ -29,13 +29,13 @@ export function useSpaces() {
     });
 
     const fetch = useCallback(async () => {
-        setState(s => ({ ...s, isLoading: true, error: null }));
+        setState((s: SpacesState) => ({ ...s, isLoading: true, error: null }));
         try {
             const spaces = await client.listSpaces();
             setState({ spaces, isLoading: false, error: null });
         } catch (e) {
             const error = e instanceof Error ? e.message : 'Failed to fetch spaces';
-            setState(s => ({ ...s, isLoading: false, error }));
+            setState((s: SpacesState) => ({ ...s, isLoading: false, error }));
         }
     }, [client]);
 
@@ -52,7 +52,7 @@ export function useSpaces() {
         parentSpaceId?: string;
     }) => {
         const space = await client.createSpace(data);
-        setState(s => ({ ...s, spaces: [...s.spaces, space] }));
+        setState((s: SpacesState) => ({ ...s, spaces: [...s.spaces, space] }));
         return space;
     }, [client]);
 
@@ -61,18 +61,18 @@ export function useSpaces() {
         data: Partial<{ name: string; originLat: number; originLon: number }>
     ) => {
         const updated = await client.updateSpace(spaceId, data);
-        setState(s => ({
+        setState((s: SpacesState) => ({
             ...s,
-            spaces: s.spaces.map(sp => sp.space_id === spaceId ? updated : sp),
+            spaces: s.spaces.map((sp: Space) => sp.space_id === spaceId ? updated : sp),
         }));
         return updated;
     }, [client]);
 
     const deleteSpace = useCallback(async (spaceId: string) => {
         await client.deleteSpace(spaceId);
-        setState(s => ({
+        setState((s: SpacesState) => ({
             ...s,
-            spaces: s.spaces.filter(sp => sp.space_id !== spaceId),
+            spaces: s.spaces.filter((sp: Space) => sp.space_id !== spaceId),
         }));
     }, [client]);
 
