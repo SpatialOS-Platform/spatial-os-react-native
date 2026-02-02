@@ -1,0 +1,42 @@
+{
+    "name": "@spatial-os/react-native",
+    "version": "1.0.0",
+    "description": "React Native SDK for Spatial OS - Open-source spatial anchor infrastructure for AR/VR",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "prepare": "npm run build",
+        "test": "jest"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/nirmalbrj7/spatial-os.git",
+        "directory": "sdk/react-native"
+    },
+    "keywords": [
+        "spatial-os",
+        "ar",
+        "vr",
+        "xr",
+        "spatial-anchor",
+        "react-native",
+        "augmented-reality"
+    ],
+    "author": "Spatial OS Contributors",
+    "license": "Apache-2.0",
+    "peerDependencies": {
+        "react": ">=17.0.0",
+        "react-native": ">=0.70.0"
+    },
+    "dependencies": {
+        "@react-native-async-storage/async-storage": "^1.21.0"
+    },
+    "devDependencies": {
+        "@types/react": "^18.2.0",
+        "@types/react-native": "^0.72.0",
+        "typescript": "^5.3.0",
+        "jest": "^29.7.0",
+        "@types/jest": "^29.5.0"
+    }
+}
